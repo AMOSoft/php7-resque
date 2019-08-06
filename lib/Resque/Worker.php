@@ -17,6 +17,11 @@ class Resque_Worker
 	private static $processPrefix = 'resque';
 
 	/**
+	 * @var bool Does the parent worker pause on the dirty exit of a child worker ?
+	 */
+	private static $pauseOnDirtyExit = false;
+
+	/**
 	* @var LoggerInterface Logging object that impliments the PSR-3 LoggerInterface
 	*/
 	public $logger;
@@ -45,11 +50,6 @@ class Resque_Worker
 	 * @var boolean True if this worker is paused.
 	 */
 	private $paused = false;
-
-	/**
-	 * @var bool Does the parent worker pause on the dirty exit of a child worker ?
-	 */
-	private $pauseOnDirtyExit = false;
 
 	/**
 	 * @var string String identifying this worker.
@@ -98,6 +98,15 @@ class Resque_Worker
 	public static function setProcessPrefix($prefix)
 	{
 		self::$processPrefix = $prefix;
+	}
+
+	/**
+	 * Does the parent worker pause on the dirty exit of a child worker ?
+	 * @param bool $doPause
+	 */
+	public static function setPauseOnDirtyExit($doPause = true)
+	{
+		self::$pauseOnDirtyExit = $doPause;
 	}
 
 	/**
@@ -273,14 +282,14 @@ class Resque_Worker
 
 				if (pcntl_wifexited($status) !== true) {
 					$job->fail(new Resque_Job_DirtyExitException('Job exited abnormally'));
-					if ($this->pauseOnDirtyExit) {
+					if (self::$pauseOnDirtyExit) {
 						$this->pauseProcessing();
 					}
 				} elseif (($exitStatus = pcntl_wexitstatus($status)) !== 0) {
 					$job->fail(new Resque_Job_DirtyExitException(
 						'Job exited with exit code ' . $exitStatus
 					));
-					if ($this->pauseOnDirtyExit) {
+					if (self::$pauseOnDirtyExit) {
 						$this->pauseProcessing();
 					}
 				}
@@ -664,15 +673,5 @@ class Resque_Worker
 	public function setLogger(Psr\Log\LoggerInterface $logger)
 	{
 		$this->logger = $logger;
-	}
-
-	/**
-	 * Does the parent worker pause on the dirty exit of a child worker ?
-	 * 
-	 * @param bool $doPause
-	 */
-	public function setPauseOnDirtyExit($doPause = true)
-	{
-		$this->pauseOnDirtyExit = $doPause;
 	}
 }
