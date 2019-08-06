@@ -47,6 +47,11 @@ class Resque_Worker
 	private $paused = false;
 
 	/**
+	 * @var bool Does the parent worker pause on the dirty exit of a child worker ?
+	 */
+	private $pauseOnDirtyExit = false;
+
+	/**
 	 * @var string String identifying this worker.
 	 */
 	private $id;
@@ -60,7 +65,7 @@ class Resque_Worker
 	 * @var int Process ID of child worker processes.
 	 */
 	private $child = null;
-
+	
     /**
      * Instantiate a new worker, given a list of queues that it should be working
      * on. The list of queues should be supplied in the priority that they should
@@ -268,10 +273,16 @@ class Resque_Worker
 
 				if (pcntl_wifexited($status) !== true) {
 					$job->fail(new Resque_Job_DirtyExitException('Job exited abnormally'));
+					if ($this->pauseOnDirtyExit) {
+						$this->pauseProcessing();
+					}
 				} elseif (($exitStatus = pcntl_wexitstatus($status)) !== 0) {
 					$job->fail(new Resque_Job_DirtyExitException(
 						'Job exited with exit code ' . $exitStatus
 					));
+					if ($this->pauseOnDirtyExit) {
+						$this->pauseProcessing();
+					}
 				}
 				else
 				{
@@ -439,7 +450,7 @@ class Resque_Worker
 	 */
 	public function pauseProcessing()
 	{
-		$this->logger->log(Psr\Log\LogLevel::NOTICE, 'USR2 received; pausing job processing');
+		$this->logger->log(Psr\Log\LogLevel::NOTICE, 'Pausing job processing (~USR2)');
 		$this->paused = true;
 	}
 
@@ -449,7 +460,7 @@ class Resque_Worker
 	 */
 	public function unPauseProcessing()
 	{
-		$this->logger->log(Psr\Log\LogLevel::NOTICE, 'CONT received; resuming job processing');
+		$this->logger->log(Psr\Log\LogLevel::NOTICE, 'Resuming job processing (~CONT)');
 		$this->paused = false;
 	}
 
@@ -653,5 +664,15 @@ class Resque_Worker
 	public function setLogger(Psr\Log\LoggerInterface $logger)
 	{
 		$this->logger = $logger;
+	}
+
+	/**
+	 * Does the parent worker pause on the dirty exit of a child worker ?
+	 * 
+	 * @param bool $doPause
+	 */
+	public function setPauseOnDirtyExit($doPause = true)
+	{
+		$this->pauseOnDirtyExit = $doPause;
 	}
 }
