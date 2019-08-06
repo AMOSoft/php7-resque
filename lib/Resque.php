@@ -8,7 +8,7 @@
  */
 class Resque
 {
-	const VERSION = '1.2';
+	const VERSION = '1.5';
 
     const DEFAULT_INTERVAL = 5;
 
