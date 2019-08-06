@@ -17,6 +17,11 @@ class Resque_Worker
 	private static $processPrefix = 'resque';
 
 	/**
+	 * @var string Does the worker update the process title ?
+	 */
+	private static $processUpdate = true;
+
+	/**
 	 * @var bool Does the parent worker pause on the dirty exit of a child worker ?
 	 */
 	private static $pauseOnDirtyExit = false;
@@ -98,6 +103,15 @@ class Resque_Worker
 	public static function setProcessPrefix($prefix)
 	{
 		self::$processPrefix = $prefix;
+	}
+
+	/**
+	 * Does the worker update the process title ?
+	 * @param bool $doUpdate
+	 */
+	public static function setProcessUpdate($doUpdate = true)
+	{
+		self::$processUpdate = $doUpdate;
 	}
 
 	/**
@@ -422,6 +436,10 @@ class Resque_Worker
 	 */
 	private function updateProcLine($status)
 	{
+		if (!self::$processUpdate) {
+			return;
+		}
+		
 		$processTitle = static::$processPrefix . '-' . Resque::VERSION . ' (' . implode(',', $this->queues) . '): ' . $status;
 		if(function_exists('cli_set_process_title') && PHP_OS !== 'Darwin') {
 			cli_set_process_title($processTitle);
